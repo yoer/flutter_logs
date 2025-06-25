@@ -18,9 +18,18 @@ class LogHelper: NSObject {
         return ""
     }
     
-    static func initLogs(result: @escaping FlutterResult){
-        print("initLogs")
-        
+    static func initLogs(result: @escaping FlutterResult, savePath: String = "", useCachesDirectory: Bool = false){
+        print("initLogs with savePath: \(savePath), useCachesDirectory: \(useCachesDirectory)")
+
+        // Update the LogDirectoryName to include "Logs" folder for consistency with Android
+        if !savePath.isEmpty {
+            LogDirectoryName = "\(savePath)/Logs"
+        } else {
+            LogDirectoryName = "Logs"
+        }
+
+        // Store the directory preference for use in defaultLogsDirectoryURL
+        UserDefaults.standard.set(useCachesDirectory, forKey: "FlutterLogs_UseCachesDirectory")
     }
     
     static func logToFile(result: @escaping FlutterResult, logFileName:String, message:String,

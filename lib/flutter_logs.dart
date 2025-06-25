@@ -75,6 +75,9 @@ class FlutterLogs {
       String logsExportZipFileName = "",
       String logsExportDirectoryName = "",
       int singleLogFileSize = 2,
+      /// iOS-specific parameter: true to use Caches directory, false to use Application Support directory
+      /// This parameter is ignored on Android platform
+      bool useCachesDirectory = false,
       bool enabled = true}) async {
     var directoryStructureString = _getDirectoryStructure(directoryStructure);
     var timeStampFormatString = _getTimeStampFormat(timeStampFormat);
@@ -106,6 +109,7 @@ class FlutterLogs {
       'zipFileName': logsExportZipFileName,
       'exportPath': logsExportDirectoryName,
       'singleLogFileSize': singleLogFileSize,
+      'useCachesDirectory': useCachesDirectory,
       'enabled': enabled,
     });
     printDebugMessage(result, 2);

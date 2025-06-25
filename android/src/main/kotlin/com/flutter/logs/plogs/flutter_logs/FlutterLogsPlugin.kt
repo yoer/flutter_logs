@@ -70,6 +70,7 @@ class FlutterLogsPlugin : FlutterPlugin, ActivityAware {
                         val zipFileName = getStringValueById("zipFileName", call)
                         val exportPath = getStringValueById("exportPath", call)
                         val singleLogFileSize = getIntValueById("singleLogFileSize", call)
+                        // Note: useCachesDirectory is iOS-specific parameter, ignored on Android
                         val enabled = getBoolValueById("enabled", call)
 
                         LogsHelper.setUpLogger(

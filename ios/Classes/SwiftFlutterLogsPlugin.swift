@@ -32,8 +32,20 @@ public class SwiftFlutterLogsPlugin: NSObject, FlutterPlugin {
         
         
         if call.method == "initLogs" {
-            LogHelper.initLogs(result:result)
-            result("Logs Configuration added.")
+            guard let args = call.arguments else {
+                LogHelper.initLogs(result:result)
+                result("Logs Configuration added.")
+                return
+            }
+            if let myArgs = args as? [String: Any] {
+                let savePath = myArgs["savePath"] as? String ?? ""
+                let useCachesDirectory = myArgs["useCachesDirectory"] as? Bool ?? false
+                LogHelper.initLogs(result:result, savePath: savePath, useCachesDirectory: useCachesDirectory)
+                result("Logs Configuration added.")
+            } else {
+                LogHelper.initLogs(result:result)
+                result("Logs Configuration added.")
+            }
         }else if call.method == "logThis" {
             guard let args = call.arguments else {
                 return
