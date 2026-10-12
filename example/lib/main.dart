@@ -43,7 +43,31 @@ class _MyAppState extends State<MyApp> {
         logsExportDirectoryName: "MyLogs/Exported",
         debugFileOperations: true,
         isDebuggable: true,
-        enabled: true);
+        enabled: true,
+        // These RxLogs options are Android-only. iOS ignores them.
+        backpressureConfig: Platform.isAndroid
+            ? BackpressureConfig(
+                queueCapacity: 1000,
+                warnQueueCapacity: 1500,
+                perLevelQuotas: {LogLevel.INFO: 300},
+                quotaWindowMillis: 60000,
+              )
+            : null,
+        redactionConfig: Platform.isAndroid
+            ? RedactionConfig(
+                enableBuiltInPatterns: {
+                  BuiltInPattern.EMAIL,
+                  BuiltInPattern.PHONE_NUMBER,
+                },
+                customRules: [
+                  RedactionRule(
+                    name: 'account_id',
+                    patternString: r'\b\d{12}\b',
+                    maskType: MaskType.PARTIAL,
+                  ),
+                ],
+              )
+            : null);
 
     // [IMPORTANT] The first log line must never be called before 'FlutterLogsYoer.initLogs'
     FlutterLogsYoer.logInfo(_tag, "setUpLogs", "setUpLogs: Setting up logs..");
@@ -59,7 +83,9 @@ class _MyAppState extends State<MyApp> {
             status: "logsExported: ${call.arguments.toString()}", append: true);
 
         // Notify Future with value
-        _completer.complete(call.arguments.toString());
+        if (!_completer.isCompleted) {
+          _completer.complete(call.arguments.toString());
+        }
       } else if (call.method == 'logsPrinted') {
         FlutterLogsYoer.logInfo(
             _tag, "setUpLogs", "logsPrinted: ${call.arguments.toString()}");
@@ -115,6 +141,10 @@ class _MyAppState extends State<MyApp> {
                     printAllLogs();
                   },
                   child: Text('Print All Logs', style: TextStyle(fontSize: 20)),
+                ),
+                ElevatedButton(
+                  onPressed: runFilteredLogs,
+                  child: Text('Filter Logs', style: TextStyle(fontSize: 20)),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -192,6 +222,7 @@ class _MyAppState extends State<MyApp> {
       environmentId: "7865",
       environmentName: "dev",
       organizationId: "5767",
+      organizationName: "Example Org",
       organizationUnitId: "5767",
       userId: "883023-2832-2323",
       userName: "umair13adil",
@@ -205,7 +236,7 @@ class _MyAppState extends State<MyApp> {
       deviceBatteryPercent: "27",
       latitude: "55.0",
       longitude: "-76.0",
-      labels: "",
+      labels: {"team": "mobile", "environment": "staging"},
     );
   }
 
@@ -281,6 +312,26 @@ class _MyAppState extends State<MyApp> {
     FlutterLogsYoer.printLogs(
         exportType: ExportType.ALL, decryptBeforeExporting: true);
     setLogsStatus(status: "All logs printed");
+  }
+
+  Future<void> runFilteredLogs() async {
+    if (!Platform.isAndroid) {
+      setLogsStatus(status: 'Filtered log queries are Android only.');
+      return;
+    }
+    await FlutterLogsYoer.printFilteredLogs(
+      keywords: ['logData', 'exception'],
+      filterType: FilterType.OR,
+      exportType: ExportType.ALL,
+      ignoreCase: true,
+    );
+    await FlutterLogsYoer.exportFilteredLogs(
+      keywords: ['logData', 'exception'],
+      filterType: FilterType.OR,
+      exportType: ExportType.ALL,
+      ignoreCase: true,
+    );
+    setLogsStatus(status: 'Filtered logs requested.');
   }
 
   Future<String> exportAllLogs() async {

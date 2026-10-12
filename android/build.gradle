@@ -24,6 +24,11 @@ rootProject.allprojects {
 
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
+apply plugin: 'jacoco'
+
+jacoco {
+    toolVersion = '0.8.12'
+}
 
 android {
     namespace 'com.flutter.logs.plogs.flutter_logs_yoer'
@@ -54,9 +59,22 @@ dependencies {
     implementation  'io.reactivex.rxjava2:rxkotlin:2.2.0'
 
     //RxLogs
-    implementation "com.github.umair13adil:RxLogs:v1.0.23"
+    implementation "com.github.umair13adil:RxLogs:v1.0.27"
+
+    testImplementation 'junit:junit:4.13.2'
 
     implementation "androidx.core:core-ktx:1.9.0"
     // Kotlin + coroutines
     implementation "androidx.work:work-runtime-ktx:2.8.1"
+}
+
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    classDirectories.setFrom(fileTree(dir: "$buildDir/tmp/kotlin-classes/debug"))
+    sourceDirectories.setFrom(files('src/main/kotlin'))
+    executionData.setFrom(fileTree(dir: buildDir, includes: ['jacoco/testDebugUnitTest.exec']))
 }

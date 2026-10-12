@@ -1,6 +1,6 @@
 name: flutter_logs_yoer
-description: An extensive filebased logging framework for flutter apps. (ELK Stack Supported) - Forked and improved from flutter_logs
-version: 2.2.1
+description: An extensive filebased logging framework for Flutter apps with Android ELK metadata support - Forked and improved from flutter_logs
+version: 2.2.7
 homepage: https://github.com/yoer/flutter_logs
 repository: https://github.com/yoer/flutter_logs
 

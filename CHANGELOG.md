@@ -1,6 +1,28 @@
+## 2.2.7
+* Refactored the Android plugin to keep channel and context state on each plugin instance and clear it when the Flutter engine detaches
+* Removed static embedding state and simplified the example Android activity
+
+## 2.2.6
+* Dispatch native-to-Dart channel callbacks on the main thread
+
+## 2.2.5
+* Added MethodChannel result callbacks to native-to-Dart export and print notifications, with delivery diagnostics
+
+## 2.2.4
+* Fixed nullable native export responses to avoid a Dart runtime type error
+
+## 2.2.3
+* Completed native export method results so Dart calls do not remain pending
+* Added diagnostics for an unavailable Android method channel during export
+
+## 2.2.2
+* Added Android backpressure controls for high-volume logging
+* Added Android redaction and masking for built-in and custom patterns
+* Added Android keyword search and filtered log export/printing
+* Added examples for the new Android features
+
 ## 2.2.1
-* Add cache directory option on iOS, support log directory configuration as Cache
-* Updated sourceCompatibility & targetCompatibility to JavaVersion.VERSION_1_8
+* Updated Android source and target compatibility to Java 8
 
 ## 2.2.0
 * Updated RxLogs version

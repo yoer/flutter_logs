@@ -1,8 +1,8 @@
 # Flutter Logs 上游升级设计
 
-状态：待审阅
+状态：已实施（APK 构建未验证）
 
-基准：`flutter_logs_yoer` 2.2.1 与下载目录中的 `flutter_logs` 2.2.7（2026-10-12 核对）
+基准：`flutter_logs_yoer` 2.2.7（2026-10-12 对照代码核对）
 
 ## 目标
 
@@ -21,7 +21,7 @@
 
 ### 保留 fork 身份与 2.2.1 行为
 
-包名保持 `flutter_logs_yoer`。Dart 类、MethodChannel、EventChannel、Android 包名与插件类、iOS 注册类和 podspec 名称继续使用 fork 标识。
+包名保持 `flutter_logs_yoer`。Dart 类、MethodChannel、Android 包名与插件类、iOS 注册类和 podspec 名称继续使用 fork 标识。EventChannel 保留现状：Android 使用 `flutter_logs_plugin_stream`，iOS 使用 `flutter_logs_yoer_plugin_stream`；仓库 Dart 代码没有 EventChannel 调用方。
 
 iOS 继续读取 `useCachesDirectory`：`true` 使用 Caches 目录，`false` 使用 Application Support。iOS 继续把 `logsWriteDirectoryName` 用作日志目录前缀并在其下创建 `Logs` 目录。Android 继续忽略 `useCachesDirectory`。
 
@@ -33,9 +33,9 @@ iOS 继续读取 `useCachesDirectory`：`true` 使用 Caches 目录，`false` �
 
 Dart API 在 `FlutterLogsYoer` 上增加上游对应的配置类型、初始化参数、日志过滤方法和序列化逻辑，并保留 `useCachesDirectory`。导出方法采用 nullable 返回类型，适配原生侧可能返回空值的行为。
 
-Android 侧升级 RxLogs 至 `v1.0.27`，合入限流、脱敏、日志格式、自动导出和过滤相关配置。插件通道状态改为实例字段；引擎分离时注销并清空通道；向 Dart 派发回调时切到主线程并记录送达结果。异步导出处理器及时完成 MethodChannel 请求，避免 Dart 调用等待不返回。
+Android 侧升级 RxLogs 至 `v1.0.27`，合入限流、脱敏、日志格式、自动导出和过滤相关配置。插件通道状态改为实例字段；引擎分离时注销并清空通道；向 Dart 派发回调时切到主线程并记录送达结果。异步导出和过滤处理器在任务排入后及时完成 MethodChannel 请求，避免 Dart 调用等待不返回。
 
-`setMetaInfo(labels:)` 接受旧的字符串调用和上游新增的 `Map<String, String>` 调用。字符串输入保持源码兼容，并维持其在当前 fork 中未写入 MetaInfo 的既有行为；Map 输入在边界处校验键和值为字符串，再传给新版本原生库。
+`setMetaInfo(labels:)` 接受旧的字符串调用和上游新增的 `Map<String, String>` 调用，并增加上游字段 `organizationName`。字符串输入保持源码兼容，并维持其在当前 fork 中未写入 MetaInfo 的既有行为；Map 输入在边界处校验键和值为字符串，再传给新版本原生库。
 
 ### 平台范围
 

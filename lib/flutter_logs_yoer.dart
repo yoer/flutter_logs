@@ -34,6 +34,54 @@ enum TimeStampFormat {
 
 enum ExportType { TODAY, LAST_HOUR, WEEKS, LAST_24_HOURS, ALL }
 
+enum FilterType { AND, OR }
+
+enum FormatType { FORMAT_CURLY, FORMAT_SQUARE, FORMAT_CSV, FORMAT_CUSTOM }
+
+enum MaskType { FULL_MASK, HASH, PARTIAL }
+
+enum BuiltInPattern { PHONE_NUMBER, EMAIL, CREDIT_CARD, JWT_TOKEN, IP_ADDRESS }
+
+class RedactionRule {
+  final String name;
+  final String patternString;
+  final MaskType maskType;
+  final String? replacement;
+
+  const RedactionRule({
+    required this.name,
+    required this.patternString,
+    this.maskType = MaskType.FULL_MASK,
+    this.replacement,
+  });
+}
+
+class BackpressureConfig {
+  final int queueCapacity;
+  final int warnQueueCapacity;
+  final Map<LogLevel, int> perLevelQuotas;
+  final int quotaWindowMillis;
+
+  const BackpressureConfig({
+    this.queueCapacity = 500,
+    this.warnQueueCapacity = 750,
+    this.perLevelQuotas = const {},
+    this.quotaWindowMillis = 60000,
+  });
+}
+
+class RedactionConfig {
+  final Set<BuiltInPattern> enableBuiltInPatterns;
+  final List<RedactionRule> customRules;
+  final MaskType defaultMaskType;
+
+  const RedactionConfig({
+    this.enableBuiltInPatterns = const {},
+    this.customRules = const [],
+    this.defaultMaskType = MaskType.FULL_MASK,
+  });
+}
+
 class FlutterLogsYoer {
   // 0 = no messages, 1 = only errors, 2 = all
   static int _debugLevel = 2;
@@ -75,10 +123,26 @@ class FlutterLogsYoer {
       String logsExportZipFileName = "",
       String logsExportDirectoryName = "",
       int singleLogFileSize = 2,
+
       /// iOS-specific parameter: true to use Caches directory, false to use Application Support directory
       /// This parameter is ignored on Android platform
       bool useCachesDirectory = false,
-      bool enabled = true}) async {
+      bool enabled = true,
+      bool forceWriteLogs = true,
+      bool enableLogsWriteToFile = true,
+      FormatType formatType = FormatType.FORMAT_CURLY,
+      String customFormatOpen = " ",
+      String customFormatClose = " ",
+      int logFilesLimit = 100,
+      String nameForEventDirectory = "",
+      List<String>? autoExportLogTypes,
+      int autoExportLogTypesPeriod = 0,
+      String csvDelimiter = "",
+      bool exportFormatted = true,
+      String exportFileNamePostFix = "",
+      String exportFileNamePreFix = "",
+      BackpressureConfig? backpressureConfig,
+      RedactionConfig? redactionConfig}) async {
     var directoryStructureString = _getDirectoryStructure(directoryStructure);
     var timeStampFormatString = _getTimeStampFormat(timeStampFormat);
     var logFileExtensionString = _getLogFileExtension(logFileExtension);
@@ -111,6 +175,25 @@ class FlutterLogsYoer {
       'singleLogFileSize': singleLogFileSize,
       'useCachesDirectory': useCachesDirectory,
       'enabled': enabled,
+      'forceWriteLogs': forceWriteLogs,
+      'enableLogsWriteToFile': enableLogsWriteToFile,
+      'formatType': _getFormatType(formatType),
+      'customFormatOpen': customFormatOpen,
+      'customFormatClose': customFormatClose,
+      'logFilesLimit': logFilesLimit,
+      'nameForEventDirectory': nameForEventDirectory,
+      'autoExportLogTypes': autoExportLogTypes?.join(',') ?? '',
+      'autoExportLogTypesPeriod': autoExportLogTypesPeriod,
+      'csvDelimiter': csvDelimiter,
+      'exportFormatted': exportFormatted,
+      'exportFileNamePostFix': exportFileNamePostFix,
+      'exportFileNamePreFix': exportFileNamePreFix,
+      'backpressureConfig': backpressureConfig != null
+          ? _encodeBackpressureConfig(backpressureConfig)
+          : null,
+      'redactionConfig': redactionConfig != null
+          ? _encodeRedactionConfig(redactionConfig)
+          : null,
     });
     printDebugMessage(result, 2);
     return result;
@@ -144,6 +227,9 @@ class FlutterLogsYoer {
     }
   }
 
+  /// Sets ELK metadata on Android.
+  ///
+  /// The iOS plugin does not implement this method.
   static Future<String> setMetaInfo({
     String appId = "",
     String appName = "",
@@ -153,6 +239,7 @@ class FlutterLogsYoer {
     String environmentId = "",
     String environmentName = "",
     String organizationId = "",
+    String organizationName = "",
     String organizationUnitId = "",
     String userId = "",
     String userName = "",
@@ -166,8 +253,9 @@ class FlutterLogsYoer {
     String deviceBatteryPercent = "",
     String latitude = "",
     String longitude = "",
-    String labels = "",
+    Object? labels = "",
   }) async {
+    final Map<String, String> normalizedLabels = _normalizeLabels(labels);
     return await channel.invokeMethod('setMetaInfo', <String, dynamic>{
       'appId': appId,
       'appName': appName,
@@ -177,6 +265,7 @@ class FlutterLogsYoer {
       'environmentId': environmentId,
       'environmentName': environmentName,
       'organizationId': organizationId,
+      'organizationName': organizationName,
       'organizationUnitId': organizationUnitId,
       'userId': userId,
       'userName': userName,
@@ -190,8 +279,33 @@ class FlutterLogsYoer {
       'deviceBatteryPercent': deviceBatteryPercent,
       'latitude': latitude,
       'longitude': longitude,
-      'labels': labels
+      'labels': normalizedLabels
     });
+  }
+
+  static Map<String, String> _normalizeLabels(Object? labels) {
+    if (labels == null || labels is String) {
+      return <String, String>{};
+    }
+    if (labels is Map) {
+      final Map<String, String> normalized = <String, String>{};
+      labels.forEach((Object? key, Object? value) {
+        if (key is! String || value is! String) {
+          throw ArgumentError.value(
+            labels,
+            'labels',
+            'must contain only String keys and String values',
+          );
+        }
+        normalized[key] = value;
+      });
+      return normalized;
+    }
+    throw ArgumentError.value(
+      labels,
+      'labels',
+      'must be a String, a Map<String, String>, or null',
+    );
   }
 
   static Future<void> logThis(
@@ -222,7 +336,7 @@ class FlutterLogsYoer {
         'e': error.stackTrace.toString()
       });
       printDebugMessage(result, 2);
-    } else if (errorMessage != null && errorMessage.isNotEmpty) {
+    } else if (errorMessage.isNotEmpty) {
       final String result =
           await channel.invokeMethod('logThis', <String, dynamic>{
         'tag': tag,
@@ -314,12 +428,12 @@ class FlutterLogsYoer {
   static Future<void> exportLogs(
       {ExportType exportType = ExportType.ALL,
       bool decryptBeforeExporting = false}) async {
-    final String result =
-        await channel.invokeMethod('exportLogs', <String, dynamic>{
+    final String? result =
+        await channel.invokeMethod<String>('exportLogs', <String, dynamic>{
       'exportType': _getExportType(exportType),
       'decryptBeforeExporting': decryptBeforeExporting
     });
-    printDebugMessage(result, 2);
+    printDebugMessage(result ?? '', 2);
   }
 
   static Future<void> printLogs(
@@ -368,6 +482,50 @@ class FlutterLogsYoer {
     }
   }
 
+  /// Searches Android log files for lines containing [keywords] and exports matches.
+  /// This method is Android-only; iOS does not implement filtered log queries.
+  static Future<void> exportFilteredLogs({
+    required List<String> keywords,
+    FilterType filterType = FilterType.OR,
+    ExportType exportType = ExportType.ALL,
+    bool decryptBeforeExporting = false,
+    bool ignoreCase = true,
+  }) async {
+    if (keywords.isEmpty) {
+      print("Error: 'keywords' must not be empty.");
+      return;
+    }
+    await channel.invokeMethod<void>('exportFilteredLogs', <String, dynamic>{
+      'keywords': keywords.join(','),
+      'filterType': _getFilterType(filterType),
+      'exportType': _getExportType(exportType),
+      'decryptBeforeExporting': decryptBeforeExporting,
+      'ignoreCase': ignoreCase,
+    });
+  }
+
+  /// Searches Android log files for lines containing [keywords] and prints matches.
+  /// This method is Android-only; iOS does not implement filtered log queries.
+  static Future<void> printFilteredLogs({
+    required List<String> keywords,
+    FilterType filterType = FilterType.OR,
+    ExportType exportType = ExportType.ALL,
+    bool decryptBeforeExporting = false,
+    bool ignoreCase = true,
+  }) async {
+    if (keywords.isEmpty) {
+      print("Error: 'keywords' must not be empty.");
+      return;
+    }
+    await channel.invokeMethod<void>('printFilteredLogs', <String, dynamic>{
+      'keywords': keywords.join(','),
+      'filterType': _getFilterType(filterType),
+      'exportType': _getExportType(exportType),
+      'decryptBeforeExporting': decryptBeforeExporting,
+      'ignoreCase': ignoreCase,
+    });
+  }
+
   static Future<void> clearLogs() async {
     final String result = await channel.invokeMethod('clearLogs');
     printDebugMessage(result, 2);
@@ -395,5 +553,45 @@ class FlutterLogsYoer {
 
   static String _getExportType(ExportType type) {
     return type.toString().split('.').last;
+  }
+
+  static String _getFilterType(FilterType type) {
+    return type.toString().split('.').last;
+  }
+
+  static String _getFormatType(FormatType type) {
+    return type.toString().split('.').last;
+  }
+
+  static String _getMaskType(MaskType type) {
+    return type.toString().split('.').last;
+  }
+
+  static Map<String, dynamic> _encodeBackpressureConfig(
+      BackpressureConfig config) {
+    return <String, dynamic>{
+      'queueCapacity': config.queueCapacity,
+      'warnQueueCapacity': config.warnQueueCapacity,
+      'perLevelQuotas': config.perLevelQuotas.map(
+          (LogLevel level, int quota) => MapEntry(_getLogLevel(level), quota)),
+      'quotaWindowMillis': config.quotaWindowMillis,
+    };
+  }
+
+  static Map<String, dynamic> _encodeRedactionConfig(RedactionConfig config) {
+    return <String, dynamic>{
+      'enableBuiltInPatterns': config.enableBuiltInPatterns
+          .map((BuiltInPattern pattern) => pattern.toString().split('.').last)
+          .toList(),
+      'customRules': config.customRules
+          .map((RedactionRule rule) => <String, dynamic>{
+                'name': rule.name,
+                'patternString': rule.patternString,
+                'maskType': _getMaskType(rule.maskType),
+                'replacement': rule.replacement,
+              })
+          .toList(),
+      'defaultMaskType': _getMaskType(config.defaultMaskType),
+    };
   }
 }

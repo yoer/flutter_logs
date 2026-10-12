@@ -1,4 +1,7 @@
 # flutter_logs_yoer
+
+基准：`flutter_logs_yoer` 2.2.7（2026-10-12）
+
 #### A file based advanced logging framework for Flutter Apps (Android & iOS). - Forked and improved from flutter_logs.
 
 [![pub package](https://img.shields.io/pub/v/flutter_logs_yoer)](https://pub.dev/packages/flutter_logs_yoer)
@@ -8,7 +11,7 @@ Overview
 
 Flutter Logs provides quick & simple file based logging solution. All logs are saved to files in storage path provided. A new log file is created every hour on a new log event. These logs can be filtered and sorted easily. Logs can easily be exported as zip file base on filter type. PLogs also provide functionality to arrange data logs into a predefined directory structure. Custom logs can be used for a specific events based logging within the app. Logs can be saved as encrypted for security purposes. 
 
-Flutter logs can work with Logstash by writing JSON delimited logs to log files. The format is based on ELK schema. You can also send logs in real-time to server using MQTT. MQTT configuration can be applied on Logstash to receive & view logs on kibana dashboard. 
+On Android, `setMetaInfo` adds ELK metadata to logs for Logstash filtering. You can also send logs in real-time to a server using MQTT. MQTT configuration can be applied on Logstash to receive and view logs on Kibana.
 
 ![Image1](pictures/picture1.png)
 
@@ -33,6 +36,7 @@ Features (Android)
 - Export all or single types of logs
 - ELK Stack Supported See more about it [here](https://www.elastic.co/what-is/elk-stack).
 - MQTT Support (SSL)
+- Backpressure, redaction/masking, and keyword filtering (Android only)
 
 Features (iOS)
 ------------------
@@ -87,11 +91,31 @@ In your main.dart file add like this:
      logsExportDirectoryName: "MyLogs/Exported",
      debugFileOperations: true,
      isDebuggable: true,
-     logsRetentionPeriodInDays = 14,
-     zipsRetentionPeriodInDays = 3,
-     autoDeleteZipOnExport = false,
-     autoClearLogs = true,
-             enabled: true);
+     logsRetentionPeriodInDays: 14,
+     zipsRetentionPeriodInDays: 3,
+     autoDeleteZipOnExport: false,
+     autoClearLogs: true,
+     enabled: true,
+     // iOS only: use Library/Caches instead of Application Support.
+     useCachesDirectory: false,
+     // Android only: these settings are ignored on iOS.
+     backpressureConfig: BackpressureConfig(
+       queueCapacity: 1000,
+       warnQueueCapacity: 1500,
+       perLevelQuotas: {LogLevel.INFO: 300},
+       quotaWindowMillis: 60000,
+     ),
+     redactionConfig: RedactionConfig(
+       enableBuiltInPatterns: {BuiltInPattern.EMAIL, BuiltInPattern.PHONE_NUMBER},
+       customRules: [
+         RedactionRule(
+           name: 'account_id',
+           patternString: r'\b\d{12}\b',
+           maskType: MaskType.PARTIAL,
+         ),
+       ],
+     ),
+   );
 
      runApp(MyApp());
    }
@@ -170,7 +194,9 @@ Where are my logs stored?
  
  #### iOS: 
  
- *--> [YOUR_APP_CONTAINER]/AppData/Library/Application Support/Logs/*
+ *--> [YOUR_APP_CONTAINER]/Library/Application Support/[YOUR_LOGS_FOLDER_NAME]/Logs/*
+
+`useCachesDirectory: true` stores iOS logs under `Library/Caches` instead. This option only affects iOS; Android keeps using the app's external files directory.
   
   ![Image3](pictures/picture3.png)
  
@@ -207,6 +233,22 @@ To export custom file logs:
 ```dart
  FlutterLogsYoer.printFileLogForName(
         logFileName: "Locations");
+```
+
+Android also supports searching the log contents by one or more keywords. `FilterType.AND` requires every keyword to match; `FilterType.OR` matches any keyword. These methods are Android-only and are not implemented by the iOS plugin.
+
+```dart
+await FlutterLogsYoer.exportFilteredLogs(
+  keywords: ['token', 'account'],
+  filterType: FilterType.OR,
+  exportType: ExportType.ALL,
+  ignoreCase: true,
+);
+
+await FlutterLogsYoer.printFilteredLogs(
+  keywords: ['network', 'timeout'],
+  filterType: FilterType.AND,
+);
 ```
 
 ### Listen to export/print results:
@@ -328,10 +370,10 @@ Printing error logs:
       }
 ```
 
-#### ELK Elastic Stack Schema Support
+#### Android-only: ELK Elastic Stack Schema Support
 _______________________________________________
 
-Send additional Meta info for better filtering at LogStash dashboard. With this setting, logs will be logged as JSON-delemited.
+Send additional Meta info for better filtering at LogStash dashboard. With this setting, logs will be logged as JSON-delemited. This API is supported on Android only; the iOS plugin does not implement `setMetaInfo`.
 
 ```dart
     await FlutterLogsYoer.setMetaInfo(
@@ -354,7 +396,8 @@ Send additional Meta info for better filtering at LogStash dashboard. With this 
       deviceSdkInt: "26",
       latitude: "0.0",
       longitude: "0.0",
-      labels: "",
+      organizationName: "Example Org",
+      labels: {"team": "mobile", "environment": "staging"},
     );
 ```
 
