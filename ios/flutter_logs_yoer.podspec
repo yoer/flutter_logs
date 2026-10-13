@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'flutter_logs_yoer'
-  s.version          = '0.0.1'
+  s.version          = '2.2.8'
   s.summary          = 'A new flutter plugin project.'
   s.description      = <<-DESC
 A new flutter plugin project.
@@ -13,7 +13,7 @@ A new flutter plugin project.
   s.license          = { :file => '../LICENSE' }
   s.author           = { 'Your Company' => 'email@example.com' }
   s.source           = { :path => '.' }
-  s.source_files = 'Classes/**/*'
+  s.source_files = 'flutter_logs_yoer/Sources/flutter_logs_yoer/**/*.swift'
   s.dependency 'Flutter'
   s.dependency 'ZIPFoundation'
   s.platform = :ios, '9.0'

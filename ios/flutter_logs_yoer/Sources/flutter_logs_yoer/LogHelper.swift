@@ -5,6 +5,7 @@
 //
 
 import Foundation
+import Flutter
 import ZIPFoundation
 
 class LogHelper: NSObject {

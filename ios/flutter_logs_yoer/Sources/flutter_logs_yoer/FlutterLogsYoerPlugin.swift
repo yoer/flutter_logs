@@ -1,7 +1,7 @@
 import Flutter
 import UIKit
 
-public class SwiftFlutterLogsYoerPlugin: NSObject, FlutterPlugin {
+public class FlutterLogsYoerPlugin: NSObject, FlutterPlugin {
     
     var eventSink: FlutterEventSink?
     static var channel : FlutterMethodChannel?
@@ -19,7 +19,7 @@ public class SwiftFlutterLogsYoerPlugin: NSObject, FlutterPlugin {
         
         setChannel(mChannel:channel)
         
-        let instance = SwiftFlutterLogsYoerPlugin()
+        let instance = FlutterLogsYoerPlugin()
         registrar.addMethodCallDelegate(instance, channel: channel)
         
         let eventChannel = FlutterEventChannel(name: "flutter_logs_yoer_plugin_stream", binaryMessenger: registrar.messenger())
@@ -83,14 +83,14 @@ public class SwiftFlutterLogsYoerPlugin: NSObject, FlutterPlugin {
                 result("iOS could not extract flutter arguments in method: (logToFile)")
             }
         }else if call.method == "exportLogs" {
-            LogHelper.getFiles(result:result,eventSink:eventSink, channel:SwiftFlutterLogsYoerPlugin.channel)
+            LogHelper.getFiles(result:result,eventSink:eventSink, channel:FlutterLogsYoerPlugin.channel)
         }else if call.method == "exportFileLogForName" {
             
         }else if call.method == "clearLogs" {
             LogHelper.clearLogs(result:result)
             result("Logs are cleared.")
         }else if call.method == "printLogs" {
-            LogHelper.printLogs(result:result,eventSink:eventSink, channel:SwiftFlutterLogsYoerPlugin.channel)
+            LogHelper.printLogs(result:result,eventSink:eventSink, channel:FlutterLogsYoerPlugin.channel)
         }
     }
 }
@@ -101,9 +101,9 @@ class EventsStreamHandler: NSObject, FlutterStreamHandler {
     
     private var fChannel:FlutterMethodChannel
     private var fRegistrar: FlutterPluginRegistrar?
-    var instance: SwiftFlutterLogsYoerPlugin?
+    var instance: FlutterLogsYoerPlugin?
     
-    init(instance: SwiftFlutterLogsYoerPlugin?, channel:FlutterMethodChannel,registrar: FlutterPluginRegistrar) {
+    init(instance: FlutterLogsYoerPlugin?, channel:FlutterMethodChannel,registrar: FlutterPluginRegistrar) {
         self.instance = instance
         self.fChannel = channel
         self.fRegistrar = registrar
